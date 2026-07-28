@@ -6,8 +6,6 @@ import "core:crypto/hash"
 import "core:crypto/hmac"
 import "core:time"
 
-SECRET_KEY : [32]byte
-
 Evaluation :: enum{Pass, Fail, Timeout}
 
 Message :: struct #packed {
@@ -15,6 +13,10 @@ Message :: struct #packed {
        ip_address: u32,
        time_stamp: i64,
    }
+
+TIMEOUT :: time.Minute * 2
+
+SECRET_KEY : [32]byte
 
 pack_msg :: proc(challenge, ip_address: u32, time_stamp: i64) -> [16]byte {
     return transmute([16]byte)Message{challenge, ip_address, time_stamp}
@@ -65,7 +67,7 @@ verifier :: proc(signature: []byte, challenge, nonce, ip_address: u32, issue_ts:
 
 	fmt.println("Duration: ", time.duration_seconds(duration))
 
-	if duration >= time.Minute * 2 {
+	if duration >= TIMEOUT {
         return .Timeout
     }
 
