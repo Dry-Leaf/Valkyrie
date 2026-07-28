@@ -1,17 +1,31 @@
 package main
 
 import "core:fmt"
-import "core:math/rand"
+import "core:crypto"
 import "core:crypto/hash"
 import "core:crypto/hmac"
-import "core:mem"
-import "core:slice"
 
-SECRET_KEY :: []u8{1,2,3}
+SECRET_KEY : [32]byte
 
 Evaluation :: enum{Pass, Fail, Timeout}
 
-digit_check :: proc(payload: []u8, digest: []u8) -> bool {
+sign :: proc(challenge, ip_address, time_stamp: u32) -> [32]byte {
+	parts := [3]u32{challenge, ip_address, time_stamp}
+	msg   := transmute([12]byte)parts
+	signature: [32]byte
+
+	hmac.sum(hash.Algorithm.SHA512_256, signature[:], msg[:], SECRET_KEY[:])
+	return signature
+}
+
+authenticate :: proc(signature: []byte, challenge, ip_address, time_stamp: u32) -> bool {
+	parts := [3]u32{challenge, ip_address, time_stamp}
+    msg   := transmute([12]byte)parts
+
+    return hmac.verify(hash.Algorithm.SHA512_256, signature[:], msg[:], SECRET_KEY[:])
+}
+
+digit_check :: proc(payload: []byte, digest: []byte) -> bool {
 	hash.hash(hash.Algorithm.SHA512_256, payload, digest)
     // first 3 bytes == 0  →  6 leading hex digits
     return digest[0] == 0 && digest[1] == 0 && digest[2] == 0
@@ -19,11 +33,11 @@ digit_check :: proc(payload: []u8, digest: []u8) -> bool {
 
 solver :: proc(challenge: u32) -> (u32, u32) {
 	parts := [2]u32{challenge, 0}
-	digest: [32]u8
+	digest: [32]byte
 
 	for nonce: u32 = 0;; nonce += 1 {
 		parts[1] = nonce
-		payload := transmute([8]u8)parts
+		payload := transmute([8]byte)parts
 
         if digit_check(payload[:], digest[:]) {
         	fmt.println(digest)
@@ -32,21 +46,18 @@ solver :: proc(challenge: u32) -> (u32, u32) {
 	}
 }
 
-authenticate :: proc(signature, challenge, ip_address, time_stamp: u32) -> bool {
-	parts := [3]u32{challenge, ip_address, time_stamp}
-    msg   := transmute([12]u8)parts
-    sig   := transmute([4]u8)signature
+verifier :: proc(signature: []byte, challenge, nonce, ip_address, time_stamp: u32) -> Evaluation{
+	if !authenticate(signature[:], challenge, ip_address, time_stamp) {
+		fmt.println("failed to authenticate")
+		return Evaluation.Fail
+	}
 
-    return hmac.verify(hash.Algorithm.SHA512_256, sig[:], msg[:], SECRET_KEY)
-}
-
-verifier :: proc(challenge, nonce: u32) -> Evaluation{
 	result: Evaluation
 
-	payload: [8]u8
-	digest: [32]u8
+	payload: [8]byte
+	digest: [32]byte
 
-    payload = transmute([8]u8)[2]u32{challenge, nonce}
+    payload = transmute([8]byte)[2]u32{challenge, nonce}
 
 	result = digit_check(payload[:], digest[:]) ? .Pass : .Fail
 
@@ -54,10 +65,23 @@ verifier :: proc(challenge, nonce: u32) -> Evaluation{
 }
 
 main :: proc() {
-	challenge := rand.uint32()
+	crypto.rand_bytes(SECRET_KEY[:])
+
+	ip_address : u32 = 0
+	time_stamp : u32 = 0
+
+	challenge_bytes : [4]byte
+	crypto.rand_bytes(challenge_bytes[:])
+	challenge := transmute(u32)challenge_bytes
+
+	sig := sign(challenge, ip_address, time_stamp)
+
+	fmt.println("signature: ", sig)
+
 	_, nonce := solver(challenge)
 	fmt.printfln("solved, nonce:%d", nonce)
-	result := verifier(challenge, nonce)
+
+	result := verifier(sig[:], challenge, nonce, ip_address, time_stamp)
 
 	#partial switch result {
 	case .Pass:
