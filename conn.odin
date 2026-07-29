@@ -59,7 +59,7 @@ get_challenge :: proc (req: ^http.Request, res: ^http.Response) {
 
     sig_str := string(hex.encode(sig[:]))
 
-    buf1: [16]byte
+    buf1: [8]byte
     challenge_str := strconv.write_uint(buf1[:], u64(challenge), 16)
 
     buf2: [16]byte
