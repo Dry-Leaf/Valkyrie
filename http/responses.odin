@@ -8,6 +8,13 @@ import "core:nbio"
 import "core:path/filepath"
 import "core:strings"
 
+// https://cs.opensource.google/go/go/+/refs/tags/go1.26.5:src/net/http/server.go;drc=65ef314f89d7eb8c1a4937edd075127a00da0ecb;l=2367
+redirect :: proc(r: ^Response, destination: string, status: Status = .Permanent_Redirect, loc := #caller_location) {
+	r.status = status
+	headers_set(&r.headers, "Location", destination)
+	respond(r, loc)
+}
+
 // Sets the response to one that sends the given HTML.
 respond_html :: proc(r: ^Response, html: string, status: Status = .OK, loc := #caller_location) {
 	r.status = status

@@ -38,6 +38,7 @@ headers_set_unsafe :: #force_inline proc(h: ^Headers, k: string, v: string, loc 
 }
 
 headers_get :: proc(h: Headers, k: string) -> (string, bool) #optional_ok {
+	//sanitize possibly unnecesary
 	return h._kv[sanitize_key(h, k)]
 }
 

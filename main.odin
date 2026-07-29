@@ -10,7 +10,7 @@ Evaluation :: enum{Pass, Fail, Timeout}
 
 Message :: struct #packed {
        challenge:  u32,
-       ip_address: u32,
+       ip_address: u128,
        time_stamp: i64,
    }
 
@@ -18,11 +18,11 @@ TIMEOUT :: time.Minute * 2
 
 SECRET_KEY : [32]byte
 
-pack_msg :: proc(challenge, ip_address: u32, time_stamp: i64) -> [16]byte {
-    return transmute([16]byte)Message{challenge, ip_address, time_stamp}
+pack_msg :: proc(challenge: u32, ip_address: u128, time_stamp: i64) -> [28]byte {
+    return transmute([28]byte)Message{challenge, ip_address, time_stamp}
 }
 
-sign :: proc(challenge, ip_address: u32, time_stamp: i64) -> [32]byte {
+sign :: proc(challenge: u32, ip_address: u128, time_stamp: i64) -> [32]byte {
     msg := pack_msg(challenge, ip_address, time_stamp)
     signature: [32]byte
 
@@ -30,7 +30,7 @@ sign :: proc(challenge, ip_address: u32, time_stamp: i64) -> [32]byte {
 	return signature
 }
 
-authenticate :: proc(signature: []byte, challenge, ip_address: u32, issue_ts: i64) -> bool {
+authenticate :: proc(signature: []byte, challenge: u32, ip_address: u128, issue_ts: i64) -> bool {
 	msg := pack_msg(challenge, ip_address, issue_ts)
     return hmac.verify(hash.Algorithm.SHA512_256, signature[:], msg[:], SECRET_KEY[:])
 }
@@ -56,7 +56,7 @@ solver :: proc(challenge: u32) -> (u32, u32) {
 	}
 }
 
-verifier :: proc(signature: []byte, challenge, nonce, ip_address: u32, issue_ts: i64) -> Evaluation{
+verifier :: proc(signature: []byte, challenge, nonce: u32, ip_address: u128, issue_ts: i64) -> Evaluation{
 	if !authenticate(signature[:], challenge, ip_address, issue_ts) {
 		fmt.println("failed to authenticate")
 		return .Fail
@@ -83,7 +83,7 @@ verifier :: proc(signature: []byte, challenge, nonce, ip_address: u32, issue_ts:
 	return result
 }
 
-issue_challenge :: proc(ip_address: u32) -> ([32]byte, u32, i64) {
+issue_challenge :: proc(ip_address: u128) -> ([32]byte, u32, i64) {
 	time_stamp := time.time_to_unix(time.now())
 
 	challenge_bytes : [4]byte
