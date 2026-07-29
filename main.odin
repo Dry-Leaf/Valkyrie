@@ -67,7 +67,7 @@ verifier :: proc(signature: []byte, challenge, nonce, ip_address: u32, issue_ts:
 
 	fmt.println("Duration: ", time.duration_seconds(duration))
 
-	if duration >= TIMEOUT {
+	if duration > TIMEOUT {
         return .Timeout
     }
 
@@ -96,23 +96,24 @@ issue_challenge :: proc(ip_address: u32) -> ([32]byte, u32, i64) {
 }
 
 main :: proc() {
-	crypto.rand_bytes(SECRET_KEY[:])
+	// crypto.rand_bytes(SECRET_KEY[:])
 
-	ip_address : u32 = 0
+	// ip_address : u32 = 0
 
-	sig, challenge, time_stamp := issue_challenge(ip_address)
+	// sig, challenge, time_stamp := issue_challenge(ip_address)
 
-	_, nonce := solver(challenge)
-	fmt.printfln("solved, nonce:%d", nonce)
+	// _, nonce := solver(challenge)
+	// fmt.printfln("solved, nonce:%d", nonce)
 
-	result := verifier(sig[:], challenge, nonce, ip_address, time_stamp)
+	// result := verifier(sig[:], challenge, nonce, ip_address, time_stamp)
 
-	switch result {
-	case .Pass:
-		fmt.println("passed")
-	case .Fail:
-		fmt.println("failed")
-	case .Timeout :
-		fmt.println("timed out")
-	}
+	// switch result {
+	// case .Pass:
+	// 	fmt.println("passed")
+	// case .Fail:
+	// 	fmt.println("failed")
+	// case .Timeout :
+	// 	fmt.println("timed out")
+	// }
+	listen()
 }
