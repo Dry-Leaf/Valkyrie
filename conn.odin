@@ -29,8 +29,6 @@ listen :: proc() {
 	// Matches every get request that did not match another route.
 	http.route_get(&router, "(.*)", http.handler(static))
 
-	http.route_post(&router, "/ping", http.handler(post_ping))
-
 	routed := http.router_handler(&router)
 
 	log.info("Listening on http://localhost:6969")
@@ -99,22 +97,4 @@ index :: proc(req: ^http.Request, res: ^http.Response) {
 
 static :: proc(req: ^http.Request, res: ^http.Response) {
 	http.respond_dir(res, "/", "static", req.url_params[0])
-}
-
-post_ping :: proc(req: ^http.Request, res: ^http.Response) {
-	http.body(req, len("ping"), res, proc(res: rawptr, body: http.Body, err: http.Body_Error) {
-		res := cast(^http.Response)res
-
-		if err != nil {
-			http.respond(res, http.body_error_status(err))
-			return
-		}
-
-		if body != "ping" {
-			http.respond(res, http.Status.Unprocessable_Content)
-			return
-		}
-
-		http.respond_plain(res, "pong")
-	})
 }
