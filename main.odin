@@ -1,6 +1,5 @@
 package main
 
-import "core:fmt"
 import "core:crypto"
 import "core:crypto/hash"
 import "core:crypto/hmac"
@@ -41,31 +40,13 @@ digit_check :: proc(payload: []byte, digest: []byte) -> bool {
     return digest[0] == 0 && digest[1] == 0 && digest[2] == 0
 }
 
-solver :: proc(challenge: u32) -> (u32, u32) {
-	parts := [2]u32{challenge, 0}
-	digest: [32]byte
-
-	for nonce: u32 = 0;; nonce += 1 {
-		parts[1] = nonce
-		payload := transmute([8]byte)parts
-
-        if digit_check(payload[:], digest[:]) {
-        	fmt.println(digest)
-        	return challenge, nonce
-        }
-	}
-}
-
 verifier :: proc(signature: []byte, challenge, nonce: u32, ip_address: u128, issue_ts: i64) -> Evaluation{
 	if !authenticate(signature[:], challenge, ip_address, issue_ts) {
-		fmt.println("failed to authenticate")
 		return .Fail
 	}
 
 	submission_ts := time.time_to_unix(time.now())
 	duration := time.diff(time.unix(issue_ts, 0), time.unix(submission_ts, 0))
-
-	fmt.println("Duration: ", time.duration_seconds(duration))
 
 	if duration > TIMEOUT {
         return .Timeout
@@ -96,14 +77,7 @@ issue_challenge :: proc(ip_address: u128) -> ([32]byte, u32, i64) {
 }
 
 main :: proc() {
-	// crypto.rand_bytes(SECRET_KEY[:])
-
-	// ip_address : u32 = 0
-
-	// sig, challenge, time_stamp := issue_challenge(ip_address)
-
-	// _, nonce := solver(challenge)
-	// fmt.printfln("solved, nonce:%d", nonce)
+	crypto.rand_bytes(SECRET_KEY[:])
 
 	// result := verifier(sig[:], challenge, nonce, ip_address, time_stamp)
 

@@ -1,7 +1,6 @@
 package main
 
 import "core:fmt"
-import "core:strings"
 import "core:log"
 import "core:net"
 import "core:time"
@@ -9,6 +8,9 @@ import "core:strconv"
 import "core:encoding/hex"
 
 import http "http"
+
+index_html :: #load("static/index.html")
+favicon :: #load("static/favicon.ico")
 
 listen :: proc() {
 	context.logger = log.create_console_logger(.Info)
@@ -20,11 +22,10 @@ listen :: proc() {
 	http.router_init(&router)
 	defer http.router_destroy(&router)
 
-	http.route_get(&router, "/cookies", http.handler(cookies))
-	http.route_get(&router, "/ping", http.handler(second))
 	http.route_get(&router, "/", http.handler(index))
-
 	http.route_get(&router, "/challenge", http.handler(get_challenge))
+	http.route_get(&router, "/verify", http.handler(get_verification))
+	http.route_get(&router, "/authenticate", http.handler(get_challenge))
 
 	// Matches every get request that did not match another route.
 	http.route_get(&router, "(.*)", http.handler(static))
@@ -51,11 +52,7 @@ get_challenge :: proc (req: ^http.Request, res: ^http.Response) {
 
     sig, challenge, time_stamp := issue_challenge(ip_address)
 
-    fmt.printfln("signature: %x", sig)
-    fmt.printfln("challenge: %x", challenge)
-    fmt.printfln("time_stamp: %x", time_stamp)
-
-    sig_str := string(hex.encode(sig[:]))
+    sig_str := string(hex.encode(sig[:], context.temp_allocator))
 
     buf1: [8]byte
     challenge_str := strconv.write_uint(buf1[:], u64(challenge), 16)
@@ -63,11 +60,20 @@ get_challenge :: proc (req: ^http.Request, res: ^http.Response) {
     buf2: [16]byte
     ts_str := strconv.write_int(buf2[:], time_stamp, 16)
 
+    notif := fmt.tprintf("signature: %s\nchallenge: %s\ntime_stamp: %s", sig_str, challenge_str, ts_str)
+    defer free_all(context.temp_allocator)
+
     http.headers_set(&res.headers, "signature", sig_str)
     http.headers_set(&res.headers, "challenge", challenge_str)
     http.headers_set(&res.headers, "time_stamp", ts_str)
 
-	http.redirect(res, "/")
+    http.respond_plain(res, notif)
+}
+
+get_verification :: proc(req: ^http.Request, res: ^http.Response) {
+	sig_str := req.url_params[1]
+	challenge_str := req.url_params[2]
+	ts_str := req.url_params[3]
 }
 
 cookies :: proc(req: ^http.Request, res: ^http.Response) {
@@ -92,7 +98,7 @@ second :: proc(req: ^http.Request, res: ^http.Response) {
 }
 
 index :: proc(req: ^http.Request, res: ^http.Response) {
-	http.respond_file(res, "static/index.html")
+	http.respond_file_content(res, "static/index.html", index_html)
 }
 
 static :: proc(req: ^http.Request, res: ^http.Response) {
