@@ -88,10 +88,15 @@ headers_delete_unsafe :: #force_inline proc(h: ^Headers, k: string) {
 headers_set_content_type :: proc {
 	headers_set_content_type_mime,
 	headers_set_content_type_string,
+	headers_set_content_encoding_string,
 }
 
 headers_set_content_type_string :: #force_inline proc(h: ^Headers, ct: string) {
 	headers_set_unsafe(h, "content-type", ct)
+}
+
+headers_set_content_encoding_string :: #force_inline proc(h: ^Headers) {
+	headers_set_unsafe(h, "content-encoding", "gzip")
 }
 
 headers_set_content_type_mime :: #force_inline proc(h: ^Headers, ct: Mime_Type) {

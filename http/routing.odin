@@ -7,6 +7,7 @@ import "core:net"
 import "core:strconv"
 import "core:strings"
 import "core:text/match"
+import "core:encoding/hex"
 
 URL :: struct {
 	raw:    string, // All other fields are views/slices into this string.
@@ -108,6 +109,21 @@ query_get_int :: proc(url: URL, key: string, base := 0) -> (result: int, ok: boo
 	set = true
 	result, ok = strconv.parse_int(str, base)
 	return
+}
+
+query_get_bytes :: proc(url: URL, key: string, base := 0) -> (result: [32]byte, ok: bool, set: bool) {
+    str := query_get(url, key) or_return
+    set = true
+
+    decoded, decode_ok := hex.decode(transmute([]u8)str)
+    if !decode_ok || len(decoded) != 32 {
+        return
+    }
+    defer delete(decoded)
+
+    copy(result[:], decoded)
+    ok = true
+    return
 }
 
 query_get_uint :: proc(url: URL, key: string, base := 0) -> (result: uint, ok: bool, set: bool) {

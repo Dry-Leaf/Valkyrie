@@ -3,14 +3,12 @@ package main
 import "core:fmt"
 import "core:log"
 import "core:net"
-import "core:time"
 import "core:strconv"
 import "core:encoding/hex"
 
 import http "http"
 
-index_html :: #load("static/index.html")
-favicon :: #load("static/favicon.ico")
+index_html :: #load("static/index.html.gz")
 
 listen :: proc() {
 	context.logger = log.create_console_logger(.Info)
@@ -71,34 +69,63 @@ get_challenge :: proc (req: ^http.Request, res: ^http.Response) {
 }
 
 get_verification :: proc(req: ^http.Request, res: ^http.Response) {
-	sig_str := req.url_params[1]
-	challenge_str := req.url_params[2]
-	ts_str := req.url_params[3]
-}
+	signature, ok, _ := http.query_get_bytes(req.url, "signature")
+	if !ok {
+		http.respond_plain(res, "not all params present")
+		return
+	}
 
-cookies :: proc(req: ^http.Request, res: ^http.Response) {
-	append(
-		&res.cookies,
-		http.Cookie{
-			name         = "Session",
-			value        = "123",
-			expires_gmt  = time.now(),
-			max_age_secs = 10,
-			http_only    = true,
-			same_site    = .Lax,
-		},
-	)
-	http.respond_plain(res, "Yo!")
-}
+	challenge, ok1, _ := http.query_get_uint(req.url, "challenge")
+	if !ok1 {
+		http.respond_plain(res, "not all params present")
+		return
+	}
 
-second :: proc(req: ^http.Request, res: ^http.Response) {
-	//http.respond_plain(res, "pong")
-	log.info("redirect attempt")
-	http.redirect(res, "/second_test.html")
+	nonce, ok2, _ := http.query_get_uint(req.url, "nonce")
+	if !ok2 {
+		http.respond_plain(res, "not all params present")
+		return
+	}
+
+	time_stamp, ok3, _ := http.query_get_int(req.url, "time_stamp")
+	if !ok3 {
+		http.respond_plain(res, "not all params present")
+		return
+	}
+
+	ip_address : u128
+
+  	ip_address_str, present := http.headers_get(req.headers, "X-Real-IP")
+   	if present {
+    	ok : bool
+    	ip_address, ok = strconv.parse_u128_of_base(ip_address_str, 16)
+     	fmt.assertf(ok, "client ip could not be parsed")
+    } else {
+    	ip_address = 0
+    }
+
+ 	notif := fmt.tprintf("signature: %x\nchallenge: %x\ntime_stamp: %x", signature, challenge, time_stamp)
+    defer free_all(context.temp_allocator)
+
+    log.info(notif)
+
+	eval := verifier(signature[:], u32(challenge), u32(nonce), ip_address, i64(time_stamp))
+	eval_msg : string
+
+	switch eval {
+	case .Pass:
+		eval_msg = "passed"
+	case .Fail:
+		eval_msg = "failed"
+	case .Timeout :
+		eval_msg = "timed out"
+	}
+
+	http.respond_plain(res, eval_msg)
 }
 
 index :: proc(req: ^http.Request, res: ^http.Response) {
-	http.respond_file_content(res, "static/index.html", index_html)
+	http.respond_file_content(res, "static/index.html.gz", index_html)
 }
 
 static :: proc(req: ^http.Request, res: ^http.Response) {

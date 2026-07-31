@@ -25,6 +25,7 @@ mime_from_extension :: proc(s: string) -> Mime_Type {
 	//odinfmt:disable
 	switch filepath.ext(s) {
 	case ".html": return .Html
+	case ".gz":   return .Html
 	case ".js":   return .Js
 	case ".css":  return .Css
 	case ".csv":  return .Csv

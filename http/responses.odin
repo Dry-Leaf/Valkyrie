@@ -109,6 +109,7 @@ respond_file_content :: proc(r: ^Response, path: string, content: []byte, status
 
 	r.status = status
 	headers_set_content_type(&r.headers, content_type)
+	headers_set_content_type(&r.headers) // sets content-encoding to gzip
 	body_set(r, content, loc)
 	respond(r, loc)
 }
