@@ -20,17 +20,17 @@ listen :: proc() {
 	http.router_init(&router)
 	defer http.router_destroy(&router)
 
-	http.route_get(&router, "/", http.handler(index))
-	http.route_get(&router, "/challenge", http.handler(get_challenge))
-	http.route_get(&router, "/verify", http.handler(get_verification))
-	http.route_get(&router, "/authenticate", http.handler(get_challenge))
+	http.route_get(&router, "/vk", http.handler(index))
+	http.route_get(&router, "/vk/challenge", http.handler(get_challenge))
+	http.route_get(&router, "/vk/verify", http.handler(get_verification))
+	http.route_get(&router, "/vk/authenticate", http.handler(get_challenge))
 
 	// Matches every get request that did not match another route.
 	http.route_get(&router, "(.*)", http.handler(static))
 
 	routed := http.router_handler(&router)
 
-	log.info("Listening on http://localhost:6969")
+	log.info("Listening on http://localhost:6969/vk")
 
 	err := http.listen_and_serve(&s, routed, net.Endpoint{address = net.IP4_Loopback, port = 6969})
 	fmt.assertf(err == nil, "server stopped with error: %v", err)
@@ -39,6 +39,7 @@ listen :: proc() {
 get_challenge :: proc (req: ^http.Request, res: ^http.Response) {
 	ip_address : u128
 
+	// this will be set by the proxy
   	ip_address_str, present := http.headers_get(req.headers, "X-Real-IP")
    	if present {
     	ok : bool
@@ -59,7 +60,7 @@ get_challenge :: proc (req: ^http.Request, res: ^http.Response) {
     ts_str := strconv.write_int(buf2[:], time_stamp, 16)
 
     notif := fmt.tprintf(`<!doctype html>
-    	<form action="/verify">
+    	<form action="/vk/verify">
      		<p>Challenge: 0x%[1]s</p><br>
      		<input type='hidden' name='signature' value='%[0]s'/>
      		<input type='hidden' name='challenge' value='0x%[1]s'/>
@@ -119,14 +120,16 @@ get_verification :: proc(req: ^http.Request, res: ^http.Response) {
 
 		switch eval {
 		case .Pass:
-			eval_msg = "passed"
+			// vk_original route will exist on the proxy-end
+			eval_msg = "<!doctype html>passed<br><a href='/vk_original'>Proceed to site...</a>"
+			// this should also set a cookie the proxy can read
 		case .Fail:
-			eval_msg = "failed"
+			eval_msg = "<!doctype html>failed"
 		case .Timeout :
-			eval_msg = "timed out"
+			eval_msg = "<!doctype html>timed out"
 		}
 
-		http.respond_plain(res, eval_msg)
+		http.respond_html(res, eval_msg)
 		return
 	}
 
