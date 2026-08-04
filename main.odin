@@ -4,6 +4,7 @@ import "core:crypto"
 import "core:crypto/hash"
 import "core:crypto/hmac"
 import "core:time"
+import "core:fmt"
 
 Evaluation :: enum{Pass, Fail, Timeout}
 
@@ -35,7 +36,9 @@ authenticate :: proc(signature: []byte, challenge: u32, ip_address: u128, issue_
 }
 
 digit_check :: proc(payload: []byte, digest: []byte) -> bool {
-	hash.hash(hash.Algorithm.SHA512_256, payload, digest)
+	hash.hash(hash.Algorithm.SHA256, payload, digest)
+
+	fmt.println(digest)
     // first 3 bytes == 0  ->  6 leading hex digits
     return digest[0] == 0 && digest[1] == 0 && digest[2] == 0
 }
@@ -57,7 +60,12 @@ verifier :: proc(signature: []byte, challenge, nonce: u32, ip_address: u128, iss
 	payload: [8]byte
 	digest: [32]byte
 
+	fmt.println(challenge)
+	fmt.println(nonce)
+
     payload = transmute([8]byte)[2]u32{challenge, nonce}
+
+	fmt.println(payload)
 
 	result = digit_check(payload[:], digest[:]) ? .Pass : .Fail
 

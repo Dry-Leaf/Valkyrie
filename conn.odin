@@ -137,6 +137,7 @@ get_verification :: proc(req: ^http.Request, res: ^http.Response) {
 }
 
 index :: proc(req: ^http.Request, res: ^http.Response) {
+	// original url will be in a cookie set by the proxy
 	http.respond_file_content(res, "static/index.html", index_html) //.gz", index_html)
 }
 

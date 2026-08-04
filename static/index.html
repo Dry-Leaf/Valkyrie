@@ -67,3 +67,42 @@
                                                                                                   ,//:                                         </pre><br>
 <noscript><iframe style="border:none;" src=/vk/challenge></iframe></noscript>
 </center>
+<script>
+function concatUint8Arrays(a, b) {
+  const result = new Uint8Array(a.length + b.length);
+  result.set(a, 0);          // Copy `a` starting at index 0
+  result.set(b, a.length);   // Copy `b` starting right after `a`
+  return result;
+}
+
+async function hashString(challenge, nonce) {
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+
+    const challengeVal = parseInt(challenge, 16);
+
+    console.log(challengeVal);
+
+    view.setUint32(0, challengeVal, true);
+    view.setUint32(4, nonce, true);
+
+    view.setUint32(0, Number(challengeVal), true);
+    view.setUint32(4, Number(nonce), true);
+
+    const combinedBuffer = new Uint8Array(buffer);
+    console.log(Array.from(combinedBuffer));
+    
+    const hashBuffer = await crypto.subtle.digest('SHA-256', combinedBuffer);
+    
+    // Convert the ArrayBuffer to a hex string
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+    console.log(hashArray);
+
+    return hashArray[0] == 0 && hashArray[1] == 0 && hashArray[2] == 0
+}
+
+const decimalToHex = dec => dec.toString(16);
+
+hashString('7753b445', 24574412).then(result => console.log(result));
+</script>
