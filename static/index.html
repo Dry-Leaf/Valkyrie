@@ -86,9 +86,6 @@ async function hashString(challenge, nonce) {
     view.setUint32(0, challengeVal, true);
     view.setUint32(4, nonce, true);
 
-    view.setUint32(0, Number(challengeVal), true);
-    view.setUint32(4, Number(nonce), true);
-
     const combinedBuffer = new Uint8Array(buffer);
     console.log(Array.from(combinedBuffer));
     
