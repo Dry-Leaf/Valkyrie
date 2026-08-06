@@ -74,6 +74,8 @@ async function solve(challenge) {
 
   const buffer = new ArrayBuffer(8);
   const view = new DataView(buffer);
+  const hashView = new DataView(new ArrayBuffer(32));
+
   view.setUint32(0, challengeBits, true);
 
   const promises = new Array(BATCH_SIZE);
@@ -92,9 +94,9 @@ async function solve(challenge) {
     const hashBuffers = await Promise.all(promises);
 
     for (let i = 0; i < BATCH_SIZE; i++) {
-      const bytes = new Uint8Array(hashBuffers[i]);
+      const firstWord = new DataView(hashBuffers[i]).getUint32(0, false);
 
-      if (bytes[0] === 0 && bytes[1] === 0 && bytes[2] < 16) {
+      if ((firstWord >>> 12) === 0) {
         return currentNonce + i;
       }
     }

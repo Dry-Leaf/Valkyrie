@@ -38,9 +38,8 @@ authenticate :: proc(signature: []byte, challenge: u32, ip_address: u128, issue_
 digit_check :: proc(payload: []byte, digest: []byte) -> bool {
 	hash.hash(hash.Algorithm.SHA256, payload, digest)
 
-	fmt.println(digest)
-    // first 3 bytes == 0  ->  6 leading hex digits
-    return digest[0] == 0 && digest[1] == 0 && digest[2] < 16
+    first_word := transmute(u32be)(^u32)(raw_data(digest))^
+    return (first_word >> 12) == 0
 }
 
 verifier :: proc(signature: []byte, challenge, nonce: u32, ip_address: u128, issue_ts: i64) -> Evaluation{
