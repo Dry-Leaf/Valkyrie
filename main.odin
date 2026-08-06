@@ -40,7 +40,7 @@ digit_check :: proc(payload: []byte, digest: []byte) -> bool {
 
 	fmt.println(digest)
     // first 3 bytes == 0  ->  6 leading hex digits
-    return digest[0] == 0 && digest[1] == 0 && digest[2] == 0
+    return digest[0] == 0 && digest[1] == 0 && digest[2] < 16
 }
 
 verifier :: proc(signature: []byte, challenge, nonce: u32, ip_address: u128, issue_ts: i64) -> Evaluation{

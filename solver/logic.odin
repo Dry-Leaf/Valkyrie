@@ -5,7 +5,7 @@ import "core:crypto/hash"
 digit_check :: proc(payload: []byte, digest: []byte) -> bool {
 	hash.hash(hash.Algorithm.SHA256, payload, digest)
     // first 3 bytes == 0  ->  6 leading hex digits
-    return digest[0] == 0 && digest[1] == 0 && digest[2] == 0
+    return digest[0] == 0 && digest[1] == 0 && digest[2] < 16
 }
 
 @(export)
