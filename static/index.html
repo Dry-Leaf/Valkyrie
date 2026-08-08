@@ -1,6 +1,6 @@
 <!doctype html><link href="data:image/svg+xml,<svg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
 <path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/>
-</svg>" rel=icon><meta charset=UTF-8><title>Valkyrie</title><style>pre{display:inline-block;font-size:7px;line-height:7px;text-align:left;font-family:monospace!important}</style><center><pre>
+</svg>" rel=icon><meta charset=UTF-8><title>Valkyrie</title><noscript><style>#progressText{display:none;}</style></noscript><style>pre{display:inline-block;font-size:7px;line-height:7px;text-align:left;font-family:monospace!important}</style><center><pre>
 
                                                                                                       `::__;;,
                                                                                                      `?Lk7Lv?e:
@@ -66,44 +66,86 @@
                                                                                                 ,xXGDDp;
                                                                                                   ,//:                                         </pre><br>
 <noscript><iframe style="border:none;" src=/vk/challenge></iframe></noscript>
+<br><div id="progressText">0 attempts</div>
 </center>
 <script>
 async function solve(challenge) {
-  const challengeBits = parseInt(challenge, 16);
-  const BATCH_SIZE = 150;
+    const BATCH_SIZE = 150;
+    const challengeBits = parseInt(challenge, 16);
+    let nonce = 0;
 
-  const buffer = new ArrayBuffer(8);
-  const view = new DataView(buffer);
-  const hashView = new DataView(new ArrayBuffer(32));
+    async function loopChunk() {
+      const currentNonce = nonce;
+      const promises = new Array(BATCH_SIZE);
 
-  view.setUint32(0, challengeBits, true);
+      for (let i = 0; i < BATCH_SIZE; i++) {
+        const buf = new ArrayBuffer(8);
+        const v = new DataView(buf);
+        v.setUint32(0, challengeBits, true);
+        v.setUint32(4, currentNonce + i, true);
 
-  const promises = new Array(BATCH_SIZE);
-
-  let nonce = 0;
-
-  while (true) {
-    const currentNonce = nonce;
-
-    for (let i = 0; i < BATCH_SIZE; i++) {
-      view.setUint32(4, currentNonce + i, true);
-
-      promises[i] = crypto.subtle.digest('SHA-256', buffer.slice(0));
-    }
-
-    const hashBuffers = await Promise.all(promises);
-
-    for (let i = 0; i < BATCH_SIZE; i++) {
-      const firstWord = new DataView(hashBuffers[i]).getUint32(0, false);
-
-      if ((firstWord >>> 12) === 0) {
-        return currentNonce + i;
+        promises[i] = crypto.subtle.digest('SHA-256', buf);
       }
+
+      const hashBuffers = await Promise.all(promises);
+
+      for (let i = 0; i < BATCH_SIZE; i++) {
+        const firstWord = new DataView(hashBuffers[i]).getUint32(0, false);
+
+        if ((firstWord >>> 12) === 0) {
+          return currentNonce + i;
+        }
+      }
+
+      nonce += BATCH_SIZE;
+
+      progressText.textContent = `${nonce} attempts`;
+
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return await loopChunk();
     }
 
-    nonce += BATCH_SIZE;
+    return await loopChunk();
+}
+
+async function getChallenge() {
+  const progressText = document.getElementById('progressText');
+
+  try {
+    const response = await fetch("/vk/challenge");
+    if (!response.ok) {
+      throw new Error(`Response status: ${response.status}`);
+    }
+
+    const headers = response.headers;
+    const challenge = headers.get("challenge");
+
+    console.log(challenge);
+
+    const result = await solve(challenge);
+
+    console.log(result);
+
+    const sig = headers.get("signature");
+    const ts = headers.get("time_stamp");
+
+    const verify_url = `/vk/verify?signature=${sig}&challenge=0x${challenge}&time_stamp=0x${ts}&nonce=${result}`
+
+    progressText.textContent = 'Verifying solution…';
+
+    const response2 = await fetch(verify_url);
+    if (!response2.ok) {
+      throw new Error(`Response status: ${response.status}`);
+    }
+
+    const result2 = await response2.text();
+    console.log(result2);
+
+  } catch (error) {
+    console.error(error.message);
   }
 }
 
-solve('5abb83ec').then(result => console.log(result));
+getChallenge();
+
 </script>
